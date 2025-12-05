@@ -10,7 +10,8 @@ import { PieChart, AlertCircle } from 'lucide-react';
 
 function App() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); // General app errors (e.g., API key)
+  const [stockErrors, setStockErrors] = useState({}); // { symbol: "Error message" }
   const [sortBy, setSortBy] = useState('symbol'); // 'symbol' | 'return' | 'value'
   
   // Persistent State
@@ -42,38 +43,93 @@ function App() {
   // Fetch Data for Symbols
   useEffect(() => {
     const loadData = async () => {
-      const missingSymbols = symbols.filter(s => !marketData[s]);
-      if (missingSymbols.length === 0) return;
+      // Symbols that we need to fetch data for (not in marketData and no existing error)
+      const symbolsToFetch = symbols.filter(s => !marketData[s] && !stockErrors[s]);
+
+      // Also re-fetch if a symbol that previously had an error is now "cleared" by the user adding it again, or if it changed
+      const symbolsToRecheck = symbols.filter(s => stockErrors[s] && !symbolsToFetch.includes(s));
+
+      if (symbolsToFetch.length === 0 && symbolsToRecheck.length === 0) return;
 
       setLoading(true);
-      setError('');
+      setError(''); // Clear general error
+
+      let newMarketData = { ...marketData };
+      let newStockErrors = { ...stockErrors };
+      const symbolsToRemove = new Set(); // New set to collect symbols to remove
+
+      // Clear errors for symbols we are about to re-fetch
+      symbolsToRecheck.forEach(s => delete newStockErrors[s]);
       
-      try {
-        const newData = { ...marketData };
-        for (const symbol of missingSymbols) {
-           const data = await fetchStockData(symbol);
-           newData[symbol] = data;
+      const allSymbolsToProcess = [...new Set([...symbolsToFetch, ...symbolsToRecheck])];
+
+      for (const symbol of allSymbolsToProcess) {
+        try {
+          const data = await fetchStockData(symbol);
+          newMarketData[symbol] = data;
+          // Clear any previous error for this symbol if fetch was successful
+          delete newStockErrors[symbol];
+        } catch (err) {
+          console.error(`Error fetching data for ${symbol}:`, err);
+          // Check if the error indicates an invalid symbol
+          if (err.message && err.message.includes('Invalid symbol')) {
+            symbolsToRemove.add(symbol);
+          } else {
+            newStockErrors[symbol] = err.message;
+            // Ensure this symbol is not in marketData if it failed
+            delete newMarketData[symbol];
+          }
         }
-        setMarketData(newData);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
       }
+
+      // After the loop, remove the identified invalid symbols and update states
+      if (symbolsToRemove.size > 0) {
+        setSymbols(prevSymbols => prevSymbols.filter(s => !symbolsToRemove.has(s)));
+        setStockErrors(prevErrors => {
+          const updatedErrors = { ...newStockErrors }; // Start with current errors from loop
+          symbolsToRemove.forEach(s => delete updatedErrors[s]);
+          return updatedErrors;
+        });
+        setMarketData(prevData => {
+          const updatedData = { ...newMarketData }; // Start with current data from loop
+          symbolsToRemove.forEach(s => delete updatedData[s]);
+          return updatedData;
+        });
+      } else {
+        setMarketData(newMarketData);
+        setStockErrors(newStockErrors); // Update errors after the loop
+      }
+      setLoading(false);
     };
 
     loadData();
-  }, [symbols, marketData]);
+  }, [symbols, marketData, globalConfig.startDate, stockErrors]); // Add stockErrors and globalConfig.startDate to dependencies
 
   const handleAddStock = (symbol) => {
     if (!symbols.includes(symbol)) {
-      setSymbols([...symbols, symbol]);
+      setSymbols(prevSymbols => [...prevSymbols, symbol]);
+      // If a symbol is added that previously had an error, clear that error
+      setStockErrors(prevErrors => {
+        const newErrors = { ...prevErrors };
+        delete newErrors[symbol];
+        return newErrors;
+      });
     }
   };
 
   const handleRemoveStock = (symbol) => {
     setSymbols(symbols.filter(s => s !== symbol));
-    // Optional: Clear marketData[symbol] if you want to free memory
+    // Also clear error and market data for the removed symbol
+    setStockErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+      delete newErrors[symbol];
+      return newErrors;
+    });
+    setMarketData(prevData => {
+      const newData = { ...prevData };
+      delete newData[symbol];
+      return newData;
+    });
   };
 
   const handleUpdateConfig = (key, value) => {
@@ -83,8 +139,10 @@ function App() {
   // Derived State: Calculations
   const results = useMemo(() => {
     const unsorted = symbols.map(symbol => {
+      // If there's an error for this symbol, or no data yet, skip it for calculations
+      if (stockErrors[symbol] || !marketData[symbol]) return null; 
+
       const data = marketData[symbol];
-      if (!data) return null;
       
       const result = calculateReturns(
         data, 
@@ -93,14 +151,14 @@ function App() {
       );
       
       return { ...result, symbol };
-    }).filter(Boolean);
+    }).filter(Boolean); // Filter out nulls (errored or pending)
 
     return unsorted.sort((a, b) => {
       if (sortBy === 'value') return b.currentValue - a.currentValue;
       if (sortBy === 'return') return b.totalReturn - a.totalReturn;
       return a.symbol.localeCompare(b.symbol);
     });
-  }, [symbols, marketData, globalConfig, sortBy]);
+  }, [symbols, marketData, globalConfig, sortBy, stockErrors]);
 
   // Derived State: Aggregates for Dashboard
   const aggregates = useMemo(() => {
@@ -140,7 +198,10 @@ function App() {
     <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900">
       <Sidebar 
         stocks={results}
+        allSymbols={symbols} // Pass all symbols including those with errors for sidebar list
+        stockErrors={stockErrors} // Pass stock errors to sidebar
         onAddStock={handleAddStock}
+        onRemoveStock={handleRemoveStock} // Allow removal from sidebar list
         globalConfig={globalConfig}
         onUpdateGlobalConfig={handleUpdateConfig}
         sortBy={sortBy}
@@ -148,7 +209,7 @@ function App() {
       />
 
       <main className="flex-1 p-8 overflow-y-auto h-screen">
-        {/* Error Display */}
+        {/* General Error Display */}
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 flex items-center border border-red-100">
             <AlertCircle className="mr-2" size={20} />
@@ -161,7 +222,7 @@ function App() {
           <StatsCard 
             title="Total Invested" 
             value={aggregates.totalInvested} 
-            subValue={`${symbols.length} Active Positions`}
+            subValue={`${symbols.length - Object.keys(stockErrors).length} Active Positions`}
           />
           <StatsCard 
             title="Portfolio Value" 
@@ -205,7 +266,7 @@ function App() {
           </>
         )}
 
-        {!loading && results.length === 0 && !error && (
+        {!loading && results.length === 0 && !Object.keys(stockErrors).length && !error && (
           <div className="flex flex-col items-center justify-center h-[500px] bg-white rounded-xl border border-dashed border-gray-300 text-center p-12">
             <div className="bg-blue-50 p-4 rounded-full mb-4">
                <PieChart size={48} className="text-blue-500" />
@@ -214,6 +275,19 @@ function App() {
             <p className="text-gray-500 max-w-md">
               Use the sidebar to add your first stock symbol (e.g., AAPL, GOOGL) and configure your weekly investment strategy.
             </p>
+          </div>
+        )}
+
+        {/* Display stock errors in main content if no results are shown and there are errors */}
+        {!loading && results.length === 0 && Object.keys(stockErrors).length > 0 && (
+          <div className="bg-orange-50 border border-orange-100 text-orange-700 p-4 rounded-lg">
+            <h3 className="font-bold mb-2">Some stocks could not be loaded:</h3>
+            <ul className="list-disc list-inside">
+              {Object.entries(stockErrors).map(([symbol, msg]) => (
+                <li key={symbol}>{symbol}: {msg}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-sm">Please check the symbols in the sidebar and remove/re-add them if necessary.</p>
           </div>
         )}
       </main>

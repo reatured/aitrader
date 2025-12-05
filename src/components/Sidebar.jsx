@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Settings, ArrowUpDown, TrendingUp, DollarSign, List } from 'lucide-react';
+import { Plus, Settings, ArrowUpDown, TrendingUp, DollarSign, AlertCircle, Trash2 } from 'lucide-react';
 
 const Sidebar = ({ 
-  stocks, 
+  stocks, // Processed stocks (no errors)
+  allSymbols, // All symbols including those with errors
+  stockErrors, // Map of symbol -> error message
   onAddStock, 
+  onRemoveStock, // New prop for removing from sidebar list
   globalConfig, 
   onUpdateGlobalConfig, 
   sortBy, 
@@ -15,7 +18,6 @@ const Sidebar = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (symbol) {
-      // Split the input by comma, trim each symbol, filter out empty strings
       const symbolsToAdd = symbol.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
       symbolsToAdd.forEach(s => onAddStock(s));
       setSymbol('');
@@ -121,21 +123,49 @@ const Sidebar = ({
 
         {/* Stock List */}
         <div className="space-y-3">
-          {stocks.map(stock => (
-            <div key={stock.symbol} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className={`w-1 h-8 rounded-full ${stock.totalReturn >= 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <div>
-                  <div className="font-bold text-gray-900">{stock.symbol}</div>
-                  <div className="text-xs text-gray-500">${stock.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+          {allSymbols.map(symbol => { // Use allSymbols here
+            const stock = stocks.find(s => s.symbol === symbol);
+            const hasError = stockErrors[symbol];
+            
+            return (
+              <div key={symbol} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-1 h-8 rounded-full ${stock && stock.totalReturn >= 0 ? 'bg-green-500' : hasError ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                  <div>
+                    <div className="font-bold text-gray-900 flex items-center">
+                      {symbol}
+                      {hasError && (
+                        <div className="relative group ml-2">
+                          <AlertCircle size={16} className="text-red-500 cursor-help" />
+                          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-max p-2 bg-red-600 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                            {hasError}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {stock && (
+                      <div className="text-xs text-gray-500">${stock.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {stock && (
+                    <div className={`text-sm font-medium ${stock.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {stock.totalReturn >= 0 ? '+' : ''}{stock.totalReturn.toFixed(1)}%
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => onRemoveStock(symbol)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    title={`Remove ${symbol}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-              <div className={`text-sm font-medium ${stock.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {stock.totalReturn >= 0 ? '+' : ''}{stock.totalReturn.toFixed(1)}%
-              </div>
-            </div>
-          ))}
-          {stocks.length === 0 && (
+            );
+          })}
+          {allSymbols.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">
               No stocks added yet.
             </div>
