@@ -1,7 +1,7 @@
 import React from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Eye } from 'lucide-react';
 
-const StockTable = ({ stocks, onRemoveStock }) => {
+const StockTable = ({ stocks, onRemoveStock, onView }) => {
   if (stocks.length === 0) {
     return null;
   }
@@ -34,10 +34,18 @@ const StockTable = ({ stocks, onRemoveStock }) => {
                 <td className={`p-4 font-medium ${stock.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {stock.totalReturn >= 0 ? '+' : ''}{stock.totalReturn.toFixed(2)}%
                 </td>
-                <td className="p-4">
+                <td className="p-4 flex gap-2">
+                  <button
+                    onClick={() => onView(stock.symbol)}
+                    className="text-gray-400 hover:text-blue-500 transition-colors"
+                    title="View Details"
+                  >
+                    <Eye size={18} />
+                  </button>
                   <button
                     onClick={() => onRemoveStock(stock.symbol)}
                     className="text-gray-400 hover:text-red-500 transition-colors"
+                    title="Remove Stock"
                   >
                     <Trash2 size={18} />
                   </button>

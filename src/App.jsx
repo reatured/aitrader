@@ -6,6 +6,7 @@ import ConfigForm from './components/ConfigForm';
 import StatsCard from './components/StatsCard';
 import StockTable from './components/StockTable';
 import PortfolioChart from './components/PortfolioChart';
+import StockCard from './components/StockCard';
 import { LayoutDashboard, PieChart, AlertCircle } from 'lucide-react';
 
 function App() {
@@ -25,6 +26,8 @@ function App() {
     const saved = localStorage.getItem('sim_symbols');
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [selectedStockSymbol, setSelectedStockSymbol] = useState(null);
 
   // Data State
   const [marketData, setMarketData] = useState({});
@@ -72,11 +75,16 @@ function App() {
 
   const handleRemoveStock = (symbol) => {
     setSymbols(symbols.filter(s => s !== symbol));
+    if (selectedStockSymbol === symbol) setSelectedStockSymbol(null);
     // Optional: Clear marketData[symbol] if you want to free memory
   };
 
   const handleUpdateConfig = (key, value) => {
     setGlobalConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleViewStock = (symbol) => {
+    setSelectedStockSymbol(symbol);
   };
 
   // Derived State: Calculations
@@ -128,6 +136,8 @@ function App() {
 
     return { totalInvested, currentValue, totalReturn, chartData };
   }, [results]);
+
+  const selectedStock = results.find(s => s.symbol === selectedStockSymbol);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-12">
@@ -192,11 +202,23 @@ function App() {
         {!loading && results.length > 0 && (
           <>
             <PortfolioChart data={aggregates.chartData} />
+            
+            {selectedStock && (
+              <StockCard 
+                stock={selectedStock} 
+                onClose={() => setSelectedStockSymbol(null)} 
+              />
+            )}
+
             <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
               <PieChart className="mr-2" size={20}/> 
               Portfolio Breakdown
             </h2>
-            <StockTable stocks={results} onRemoveStock={handleRemoveStock} />
+            <StockTable 
+              stocks={results} 
+              onRemoveStock={handleRemoveStock} 
+              onView={handleViewStock}
+            />
           </>
         )}
 

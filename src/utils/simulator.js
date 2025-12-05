@@ -32,13 +32,15 @@ export const calculateReturns = (weeklyData, weeklyContribution, startDate) => {
     totalInvested += weeklyContribution;
 
     const currentValue = totalShares * closePrice;
+    const averageCost = totalShares > 0 ? totalInvested / totalShares : 0;
     
     history.push({
       date: dateStr,
       invested: totalInvested,
       value: currentValue,
       price: closePrice,
-      shares: totalShares
+      shares: totalShares,
+      averageCost
     });
   });
 
