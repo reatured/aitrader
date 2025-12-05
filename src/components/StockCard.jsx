@@ -1,5 +1,5 @@
 import React from 'react';
-import { AreaChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { TrendingUp, TrendingDown, DollarSign, X } from 'lucide-react';
 
@@ -72,7 +72,7 @@ const StockCard = ({ stock, onClose }) => {
 
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={stock.history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <ComposedChart data={stock.history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValueStock" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={strokeColor} stopOpacity={0.1}/>
@@ -115,7 +115,7 @@ const StockCard = ({ stock, onClose }) => {
               strokeWidth={2}
               dot={false}
             />
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
