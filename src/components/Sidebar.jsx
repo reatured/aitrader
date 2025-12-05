@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Settings, ArrowUpDown, TrendingUp, DollarSign, AlertCircle, Trash2 } from 'lucide-react';
+import { Plus, Settings, ArrowUpDown, TrendingUp, DollarSign, AlertCircle, Trash2, X } from 'lucide-react'; // Added X
 
 const Sidebar = ({ 
   stocks, // Processed stocks (no errors)
@@ -10,7 +10,9 @@ const Sidebar = ({
   globalConfig, 
   onUpdateGlobalConfig, 
   sortBy, 
-  onSortChange 
+  onSortChange,
+  isSidebarOpen, // New prop for responsive control
+  toggleSidebar // New prop for responsive control
 }) => {
   const [symbol, setSymbol] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -25,11 +27,20 @@ const Sidebar = ({
   };
 
   return (
-    <aside className="w-full lg:w-80 bg-white border-r border-gray-200 flex-shrink-0 h-screen sticky top-0 overflow-y-auto">
+    <aside className={`fixed inset-y-0 left-0 z-40 w-full bg-white border-r border-gray-200 h-screen overflow-y-auto transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 lg:w-80`}>
       <div className="p-6">
-        <div className="flex items-center gap-2 text-blue-600 mb-8">
-          <TrendingUp size={24} />
-          <h1 className="text-xl font-bold tracking-tight">AiTrader</h1>
+        <div className="flex items-center justify-between gap-2 text-blue-600 mb-8">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={24} />
+            <h1 className="text-xl font-bold tracking-tight">AiTrader</h1>
+          </div>
+          <button 
+            onClick={toggleSidebar} 
+            className="lg:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Close Sidebar"
+          >
+            <X size={24} />
+          </button>
         </div>
 
         {/* Add Stock Section */}

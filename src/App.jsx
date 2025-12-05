@@ -6,13 +6,18 @@ import Sidebar from './components/Sidebar';
 import StatsCard from './components/StatsCard';
 import PortfolioChart from './components/PortfolioChart';
 import StockCard from './components/StockCard';
-import { PieChart, AlertCircle } from 'lucide-react';
+import { PieChart, AlertCircle, Menu } from 'lucide-react'; // Added Menu
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(''); // General app errors (e.g., API key)
   const [stockErrors, setStockErrors] = useState({}); // { symbol: "Error message" }
   const [sortBy, setSortBy] = useState('symbol'); // 'symbol' | 'return' | 'value'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // New state for sidebar
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
   
   // Persistent State
   const [globalConfig, setGlobalConfig] = useState(() => {
@@ -195,7 +200,15 @@ function App() {
   }, [results]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900">
+    <div className="relative flex min-h-screen bg-gray-50 font-sans text-gray-900">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={toggleSidebar}
+        ></div>
+      )}
+      
       <Sidebar 
         stocks={results}
         allSymbols={symbols} // Pass all symbols including those with errors for sidebar list
@@ -206,9 +219,21 @@ function App() {
         onUpdateGlobalConfig={handleUpdateConfig}
         sortBy={sortBy}
         onSortChange={setSortBy}
+        isSidebarOpen={isSidebarOpen} // Pass sidebar state
+        toggleSidebar={toggleSidebar} // Pass toggle function
       />
 
-      <main className="flex-1 p-8 overflow-y-auto h-screen">
+      <main className="flex-1 p-4 lg:p-8 overflow-y-auto h-screen lg:ml-80">
+        {/* Mobile Hamburger Menu */}
+        <div className="lg:hidden flex justify-end mb-4">
+          <button 
+            onClick={toggleSidebar} 
+            className="p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
+
         {/* General Error Display */}
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 flex items-center border border-red-100">
