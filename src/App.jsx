@@ -8,6 +8,18 @@ import PortfolioChart from './components/PortfolioChart';
 import StockCard from './components/StockCard';
 import { PieChart, AlertCircle, Menu } from 'lucide-react'; // Added Menu
 
+const compactCurrencyFormatter = new Intl.NumberFormat('en-US', { 
+  style: 'currency', 
+  currency: 'USD', 
+  notation: 'compact', 
+  maximumFractionDigits: 1 
+});
+
+const percentFormatter = new Intl.NumberFormat('en-US', { 
+  maximumFractionDigits: 1, 
+  minimumFractionDigits: 1 
+});
+
 function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(''); // General app errors (e.g., API key)
@@ -223,15 +235,36 @@ function App() {
         toggleSidebar={toggleSidebar} // Pass toggle function
       />
 
-      <main className="flex-1 p-4 lg:p-8 overflow-y-auto h-screen lg:ml-80">
-        {/* Mobile Hamburger Menu */}
-        <div className="lg:hidden flex justify-end mb-4">
-          <button 
-            onClick={toggleSidebar} 
-            className="p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <Menu size={24} />
-          </button>
+      <main className="flex-1 min-h-screen p-4 pb-10 lg:p-8 overflow-x-hidden overflow-y-auto lg:ml-72 xl:ml-80">
+        {/* Mobile Header */}
+        <div className="lg:hidden sticky top-0 z-20 -mx-4 px-4 pt-2 pb-3 bg-gray-50/95 backdrop-blur supports-[backdrop-filter]:bg-gray-50/80 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-blue-600 font-semibold">
+              <PieChart size={22} />
+              <span>AiTrader</span>
+            </div>
+            <button 
+              onClick={toggleSidebar} 
+              className="p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Open navigation"
+            >
+              <Menu size={22} />
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-lg bg-white border border-gray-100 p-3">
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Value</p>
+              <div className="text-base font-bold text-gray-900">
+                {compactCurrencyFormatter.format(aggregates.currentValue ?? 0)}
+              </div>
+            </div>
+            <div className="rounded-lg bg-white border border-gray-100 p-3">
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Return</p>
+              <div className={`text-base font-bold ${aggregates.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {percentFormatter.format(aggregates.totalReturn ?? 0)}%
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* General Error Display */}

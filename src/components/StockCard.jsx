@@ -8,12 +8,10 @@ const StockCard = ({ stock, onRemove }) => {
 
   const isPositive = stock.totalReturn >= 0;
   const ColorIcon = isPositive ? TrendingUp : TrendingDown;
-  const colorClass = isPositive ? 'text-green-600' : 'text-red-600';
   const strokeColor = isPositive ? '#16a34a' : '#dc2626'; // green-600 : red-600
-  const fillColor = isPositive ? '#dcfce7' : '#fee2e2'; // green-100 : red-100
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 relative animate-fade-in">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-5 sm:p-6 relative animate-fade-in flex flex-col gap-4 h-full">
       <button 
         onClick={onRemove}
         className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors"
@@ -22,27 +20,24 @@ const StockCard = ({ stock, onRemove }) => {
         <Trash2 size={20} />
       </button>
 
-      <div className="flex flex-col justify-between items-start mb-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-2xl font-bold text-gray-900">{stock.symbol}</h2>
-            <span className={`flex items-center text-sm font-medium px-2.5 py-0.5 rounded-full ${isPositive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              <ColorIcon size={14} className="mr-1" />
-              {stock.totalReturn >= 0 ? '+' : ''}{stock.totalReturn.toFixed(2)}%
-            </span>
-          </div>
-        </div>
-        <div className="mt-2 w-full flex justify-between items-end border-b border-gray-100 pb-4">
-          <div>
-            <p className="text-gray-500 text-sm">Current Value</p>
-            <div className="text-2xl font-bold text-gray-900">
-              ${stock.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
+      <div className="flex flex-wrap justify-between items-start gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <h2 className="text-2xl font-bold text-gray-900 truncate">{stock.symbol}</h2>
+          <span className={`flex items-center text-sm font-medium px-2.5 py-0.5 rounded-full ${isPositive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <ColorIcon size={14} className="mr-1" />
+            {stock.totalReturn >= 0 ? '+' : ''}{stock.totalReturn.toFixed(2)}%
+          </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="w-full border-b border-gray-100 pb-3">
+        <p className="text-gray-500 text-sm">Current Value</p>
+        <div className="text-2xl font-bold text-gray-900">
+          ${stock.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center text-gray-500 mb-1">
             <DollarSign size={14} className="mr-1" />
@@ -72,7 +67,7 @@ const StockCard = ({ stock, onRemove }) => {
         </div>
       </div>
 
-      <div className="h-[200px] w-full">
+      <div className="h-[180px] sm:h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={stock.history} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>

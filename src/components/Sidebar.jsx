@@ -27,7 +27,7 @@ const Sidebar = ({
   };
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-40 w-full bg-white border-r border-gray-200 h-screen overflow-y-auto transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 lg:w-80`}>
+    <aside className={`fixed inset-y-0 left-0 z-40 w-full bg-white border-r border-gray-200 h-screen overflow-y-auto transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 lg:w-72 xl:w-80 lg:flex-shrink-0`}>
       <div className="p-6">
         <div className="flex items-center justify-between gap-2 text-blue-600 mb-8">
           <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ const Sidebar = ({
         {/* Add Stock Section */}
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Add Stock</h3>
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               placeholder="Symbols (e.g. AAPL, MSFT)"
@@ -56,7 +56,7 @@ const Sidebar = ({
             />
             <button
               type="submit"
-              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
               title="Add Stock"
             >
               <Plus size={20} />
@@ -102,33 +102,20 @@ const Sidebar = ({
 
         {/* Sorting */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-3 mb-3">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Your Portfolio</h3>
-            <div className="relative group">
-              <button className="text-gray-400 hover:text-gray-600">
-                <ArrowUpDown size={16} />
-              </button>
-              <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-100 shadow-lg rounded-lg py-1 hidden group-hover:block z-20">
-                <button 
-                  onClick={() => onSortChange('symbol')}
-                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortBy === 'symbol' ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
-                >
-                  Symbol
-                </button>
-                <button 
-                  onClick={() => onSortChange('return')}
-                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortBy === 'return' ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
-                >
-                  Return %
-                </button>
-                <button 
-                  onClick={() => onSortChange('value')}
-                  className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${sortBy === 'value' ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
-                >
-                  Value
-                </button>
-              </div>
-            </div>
+            <label className="w-full max-w-[180px] text-xs text-gray-500">
+              <span className="sr-only">Sort portfolio</span>
+              <select 
+                value={sortBy}
+                onChange={(e) => onSortChange(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white p-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="symbol">Sort: Symbol</option>
+                <option value="return">Sort: Return %</option>
+                <option value="value">Sort: Value</option>
+              </select>
+            </label>
           </div>
         </div>
 
@@ -139,12 +126,12 @@ const Sidebar = ({
             const hasError = stockErrors[symbol];
             
             return (
-              <div key={symbol} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
+              <div key={symbol} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-1 h-8 rounded-full ${stock && stock.totalReturn >= 0 ? 'bg-green-500' : hasError ? 'bg-red-500' : 'bg-gray-300'}`}></div>
                   <div>
-                    <div className="font-bold text-gray-900 flex items-center">
-                      {symbol}
+                    <div className="font-bold text-gray-900 flex items-center gap-1 truncate max-w-[140px] sm:max-w-[180px]">
+                      <span className="truncate">{symbol}</span>
                       {hasError && (
                         <div className="relative group ml-2">
                           <AlertCircle size={16} className="text-red-500 cursor-help" />
@@ -155,7 +142,7 @@ const Sidebar = ({
                       )}
                     </div>
                     {stock && (
-                      <div className="text-xs text-gray-500">${stock.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                      <div className="text-xs text-gray-500 truncate">${stock.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                     )}
                   </div>
                 </div>

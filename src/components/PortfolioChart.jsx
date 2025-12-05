@@ -6,7 +6,7 @@ const PortfolioChart = ({ data }) => {
   if (!data || data.length === 0) return null;
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 h-[400px] mb-8">
+    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 h-[260px] sm:h-[320px] lg:h-[420px] mb-8">
       <h3 className="text-lg font-bold text-gray-800 mb-4">Portfolio Performance</h3>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart

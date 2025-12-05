@@ -9,8 +9,8 @@ const StatsCard = ({ title, value, subValue, isCurrency = true, trend = null }) 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
       <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">{title}</h3>
-      <div className="flex items-end justify-between">
-        <div className="text-2xl font-bold text-gray-900">{formattedValue}</div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="text-xl sm:text-2xl font-bold text-gray-900">{formattedValue}</div>
         {trend !== null && (
           <div className={`flex items-center text-sm font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {trend >= 0 ? <ArrowUp size={16} className="mr-1" /> : <ArrowDown size={16} className="mr-1" />}
@@ -18,7 +18,7 @@ const StatsCard = ({ title, value, subValue, isCurrency = true, trend = null }) 
           </div>
         )}
       </div>
-      {subValue && <div className="text-sm text-gray-400 mt-1">{subValue}</div>}
+      {subValue && <div className="text-sm text-gray-400 mt-2 break-words">{subValue}</div>}
     </div>
   );
 };
