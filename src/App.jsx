@@ -2,15 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { subYears, format } from 'date-fns';
 import { fetchStockData } from './services/api';
 import { calculateReturns } from './utils/simulator';
-import ConfigForm from './components/ConfigForm';
+import Sidebar from './components/Sidebar';
 import StatsCard from './components/StatsCard';
 import PortfolioChart from './components/PortfolioChart';
 import StockCard from './components/StockCard';
-import { LayoutDashboard, PieChart, AlertCircle } from 'lucide-react';
+import { PieChart, AlertCircle } from 'lucide-react';
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState('symbol'); // 'symbol' | 'return' | 'value'
   
   // Persistent State
   const [globalConfig, setGlobalConfig] = useState(() => {
@@ -81,7 +82,7 @@ function App() {
 
   // Derived State: Calculations
   const results = useMemo(() => {
-    return symbols.map(symbol => {
+    const unsorted = symbols.map(symbol => {
       const data = marketData[symbol];
       if (!data) return null;
       
@@ -93,7 +94,13 @@ function App() {
       
       return { ...result, symbol };
     }).filter(Boolean);
-  }, [symbols, marketData, globalConfig]);
+
+    return unsorted.sort((a, b) => {
+      if (sortBy === 'value') return b.currentValue - a.currentValue;
+      if (sortBy === 'return') return b.totalReturn - a.totalReturn;
+      return a.symbol.localeCompare(b.symbol);
+    });
+  }, [symbols, marketData, globalConfig, sortBy]);
 
   // Derived State: Aggregates for Dashboard
   const aggregates = useMemo(() => {
@@ -130,22 +137,17 @@ function App() {
   }, [results]);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-12">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 mb-8 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-blue-600">
-            <LayoutDashboard size={24} />
-            <h1 className="text-xl font-bold tracking-tight">Weekly Investment Simulator</h1>
-          </div>
-          <div className="text-sm text-gray-500">
-            DCA Strategy Backtester
-          </div>
-        </div>
-      </header>
+    <div className="flex min-h-screen bg-gray-50 font-sans text-gray-900">
+      <Sidebar 
+        stocks={results}
+        onAddStock={handleAddStock}
+        globalConfig={globalConfig}
+        onUpdateGlobalConfig={handleUpdateConfig}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+      />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+      <main className="flex-1 p-8 overflow-y-auto h-screen">
         {/* Error Display */}
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 flex items-center border border-red-100">
@@ -172,13 +174,6 @@ function App() {
             trend={null}
           />
         </div>
-
-        {/* Configuration */}
-        <ConfigForm 
-          onAddStock={handleAddStock} 
-          globalConfig={globalConfig} 
-          onUpdateGlobalConfig={handleUpdateConfig} 
-        />
 
         {/* Loading State */}
         {loading && (
@@ -211,8 +206,14 @@ function App() {
         )}
 
         {!loading && results.length === 0 && !error && (
-          <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-            <p className="text-gray-500 text-lg">Add a stock symbol above to start simulating your returns.</p>
+          <div className="flex flex-col items-center justify-center h-[500px] bg-white rounded-xl border border-dashed border-gray-300 text-center p-12">
+            <div className="bg-blue-50 p-4 rounded-full mb-4">
+               <PieChart size={48} className="text-blue-500" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Start Building Your Portfolio</h3>
+            <p className="text-gray-500 max-w-md">
+              Use the sidebar to add your first stock symbol (e.g., AAPL, GOOGL) and configure your weekly investment strategy.
+            </p>
           </div>
         )}
       </main>
