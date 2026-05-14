@@ -1,13 +1,32 @@
-import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { format, parseISO } from 'date-fns';
 
-const PortfolioChart = ({ data }) => {
+const DURATION_PRESETS = ['1M', '3M', '6M', '1Y', '3Y', '5Y', 'Max'];
+
+const PortfolioChart = ({ data, duration, onDurationChange }) => {
   if (!data || data.length === 0) return null;
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 h-[260px] sm:h-[320px] lg:h-[420px] mb-8">
-      <h3 className="text-lg font-bold text-gray-800 mb-4">Portfolio Performance</h3>
+    <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col h-[300px] sm:h-[360px] lg:h-[460px] mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h3 className="text-lg font-bold text-gray-800">Portfolio Performance</h3>
+        <div className="flex items-center gap-1 flex-wrap">
+          {DURATION_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => onDurationChange(preset)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-full transition-colors ${
+                duration === preset
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-gray-300 text-gray-600 hover:border-blue-400 hover:text-blue-600'
+              }`}
+            >
+              {preset}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 min-h-0">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}
@@ -57,6 +76,7 @@ const PortfolioChart = ({ data }) => {
           />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 };

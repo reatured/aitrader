@@ -1,21 +1,42 @@
-import React, { useState } from 'react';
-import { Plus, Settings, ArrowUpDown, TrendingUp, DollarSign, AlertCircle, Trash2, X } from 'lucide-react'; // Added X
+import { useState } from 'react';
+import { Plus, Settings, TrendingUp, AlertCircle, Trash2, X } from 'lucide-react'; // Added X
+import ProfileSwitcher from './ProfileSwitcher';
 
-const Sidebar = ({ 
+const Sidebar = ({
   stocks, // Processed stocks (no errors)
   allSymbols, // All symbols including those with errors
   stockErrors, // Map of symbol -> error message
-  onAddStock, 
+  onAddStock,
   onRemoveStock, // New prop for removing from sidebar list
-  globalConfig, 
-  onUpdateGlobalConfig, 
-  sortBy, 
+  globalConfig,
+  onUpdateGlobalConfig,
+  sortBy,
   onSortChange,
   isSidebarOpen, // New prop for responsive control
-  toggleSidebar // New prop for responsive control
+  toggleSidebar, // New prop for responsive control
+  profiles, // All profiles
+  activeProfile, // Currently selected profile
+  onSelectProfile,
+  onCreateProfile,
+  onRenameProfile,
+  onDeleteProfile
 }) => {
   const [symbol, setSymbol] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Ordered list of symbols for the sidebar list, matching the current sort.
+  // `stocks` is App's already-sorted `results`; errored/pending symbols have no
+  // metric to sort by, so they go alphabetically at the end (or interleaved for symbol sort).
+  let orderedSymbols;
+  if (sortBy === 'symbol') {
+    orderedSymbols = [...allSymbols].sort((a, b) => a.localeCompare(b));
+  } else {
+    const sortedSymbols = stocks.map(s => s.symbol);
+    const leftover = allSymbols
+      .filter(s => !sortedSymbols.includes(s))
+      .sort((a, b) => a.localeCompare(b));
+    orderedSymbols = [...sortedSymbols, ...leftover];
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -42,6 +63,16 @@ const Sidebar = ({
             <X size={24} />
           </button>
         </div>
+
+        {/* Profile Switcher */}
+        <ProfileSwitcher
+          profiles={profiles}
+          activeProfile={activeProfile}
+          onSelect={onSelectProfile}
+          onCreate={onCreateProfile}
+          onRename={onRenameProfile}
+          onDelete={onDeleteProfile}
+        />
 
         {/* Add Stock Section */}
         <div className="mb-8">
@@ -87,15 +118,6 @@ const Sidebar = ({
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={globalConfig.startDate}
-                  onChange={(e) => onUpdateGlobalConfig('startDate', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                />
-              </div>
             </div>
           )}
         </div>
@@ -121,7 +143,7 @@ const Sidebar = ({
 
         {/* Stock List */}
         <div className="space-y-3">
-          {allSymbols.map(symbol => { // Use allSymbols here
+          {orderedSymbols.map(symbol => { // Render in current sort order
             const stock = stocks.find(s => s.symbol === symbol);
             const hasError = stockErrors[symbol];
             

@@ -1,5 +1,4 @@
-import React from 'react';
-import { ArrowUp, ArrowDown, DollarSign } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 
 const StatsCard = ({ title, value, subValue, isCurrency = true, trend = null }) => {
   const formattedValue = isCurrency 

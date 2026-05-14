@@ -1,4 +1,3 @@
-import React from 'react';
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { TrendingUp, TrendingDown, DollarSign, Trash2 } from 'lucide-react';
@@ -11,7 +10,7 @@ const StockCard = ({ stock, onRemove }) => {
   const strokeColor = isPositive ? '#16a34a' : '#dc2626'; // green-600 : red-600
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-5 sm:p-6 relative animate-fade-in flex flex-col gap-4 h-full">
+    <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 sm:p-6 relative animate-fade-in flex flex-col gap-4 h-full">
       <button 
         onClick={onRemove}
         className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors"

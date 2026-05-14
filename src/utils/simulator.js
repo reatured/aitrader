@@ -1,4 +1,4 @@
-import { parseISO, isAfter, isBefore, startOfWeek, format } from 'date-fns';
+import { parseISO, isAfter } from 'date-fns';
 
 /**
  * Simulates a weekly investment strategy.

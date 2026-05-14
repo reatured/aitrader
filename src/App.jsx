@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { subYears, format } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { subMonths, subYears, format } from 'date-fns';
 import { fetchStockData } from './services/api';
 import { calculateReturns } from './utils/simulator';
+import { useProfiles } from './hooks/useProfiles';
 import Sidebar from './components/Sidebar';
 import StatsCard from './components/StatsCard';
 import PortfolioChart from './components/PortfolioChart';
@@ -31,31 +32,23 @@ function App() {
     setIsSidebarOpen(!isSidebarOpen);
   };
   
-  // Persistent State
-  const [globalConfig, setGlobalConfig] = useState(() => {
-    const saved = localStorage.getItem('sim_config');
-    return saved ? JSON.parse(saved) : {
-      contribution: 100,
-      startDate: format(subYears(new Date(), 1), 'yyyy-MM-dd'), // Default to 1 year ago
-    };
-  });
+  // Persistent State — profiles own the stock list + simulation config
+  const {
+    profiles,
+    activeProfile,
+    setActiveProfile,
+    createProfile,
+    renameProfile,
+    deleteProfile,
+    updateActiveProfile,
+  } = useProfiles();
 
-  const [symbols, setSymbols] = useState(() => {
-    const saved = localStorage.getItem('sim_symbols');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Derived from the active profile
+  const symbols = activeProfile.symbols;
+  const globalConfig = activeProfile.config;
 
-  // Data State
+  // Data State — shared across profiles, keyed by symbol
   const [marketData, setMarketData] = useState({});
-
-  // Persist config changes
-  useEffect(() => {
-    localStorage.setItem('sim_config', JSON.stringify(globalConfig));
-  }, [globalConfig]);
-
-  useEffect(() => {
-    localStorage.setItem('sim_symbols', JSON.stringify(symbols));
-  }, [symbols]);
 
   // Fetch Data for Symbols
   useEffect(() => {
@@ -63,10 +56,7 @@ function App() {
       // Symbols that we need to fetch data for (not in marketData and no existing error)
       const symbolsToFetch = symbols.filter(s => !marketData[s] && !stockErrors[s]);
 
-      // Also re-fetch if a symbol that previously had an error is now "cleared" by the user adding it again, or if it changed
-      const symbolsToRecheck = symbols.filter(s => stockErrors[s] && !symbolsToFetch.includes(s));
-
-      if (symbolsToFetch.length === 0 && symbolsToRecheck.length === 0) return;
+      if (symbolsToFetch.length === 0) return;
 
       setLoading(true);
       setError(''); // Clear general error
@@ -75,12 +65,7 @@ function App() {
       let newStockErrors = { ...stockErrors };
       const symbolsToRemove = new Set(); // New set to collect symbols to remove
 
-      // Clear errors for symbols we are about to re-fetch
-      symbolsToRecheck.forEach(s => delete newStockErrors[s]);
-      
-      const allSymbolsToProcess = [...new Set([...symbolsToFetch, ...symbolsToRecheck])];
-
-      for (const symbol of allSymbolsToProcess) {
+      for (const symbol of symbolsToFetch) {
         try {
           const data = await fetchStockData(symbol);
           newMarketData[symbol] = data;
@@ -101,13 +86,15 @@ function App() {
 
       // After the loop, remove the identified invalid symbols and update states
       if (symbolsToRemove.size > 0) {
-        setSymbols(prevSymbols => prevSymbols.filter(s => !symbolsToRemove.has(s)));
-        setStockErrors(prevErrors => {
+        updateActiveProfile(profile => ({
+          symbols: profile.symbols.filter(s => !symbolsToRemove.has(s)),
+        }));
+        setStockErrors(() => {
           const updatedErrors = { ...newStockErrors }; // Start with current errors from loop
           symbolsToRemove.forEach(s => delete updatedErrors[s]);
           return updatedErrors;
         });
-        setMarketData(prevData => {
+        setMarketData(() => {
           const updatedData = { ...newMarketData }; // Start with current data from loop
           symbolsToRemove.forEach(s => delete updatedData[s]);
           return updatedData;
@@ -120,22 +107,25 @@ function App() {
     };
 
     loadData();
-  }, [symbols, marketData, globalConfig.startDate, stockErrors]); // Add stockErrors and globalConfig.startDate to dependencies
+  }, [symbols, marketData, stockErrors, updateActiveProfile]); // duration doesn't affect fetching; results useMemo slices the data
 
   const handleAddStock = (symbol) => {
     if (!symbols.includes(symbol)) {
-      setSymbols(prevSymbols => [...prevSymbols, symbol]);
-      // If a symbol is added that previously had an error, clear that error
-      setStockErrors(prevErrors => {
-        const newErrors = { ...prevErrors };
-        delete newErrors[symbol];
-        return newErrors;
-      });
+      updateActiveProfile(profile => ({ symbols: [...profile.symbols, symbol] }));
     }
+    // If a symbol is added that previously had an error, clear that error
+    // (re-adding an errored symbol acts as a retry).
+    setStockErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+      delete newErrors[symbol];
+      return newErrors;
+    });
   };
 
   const handleRemoveStock = (symbol) => {
-    setSymbols(symbols.filter(s => s !== symbol));
+    updateActiveProfile(profile => ({
+      symbols: profile.symbols.filter(s => s !== symbol),
+    }));
     // Also clear error and market data for the removed symbol
     setStockErrors(prevErrors => {
       const newErrors = { ...prevErrors };
@@ -150,21 +140,44 @@ function App() {
   };
 
   const handleUpdateConfig = (key, value) => {
-    setGlobalConfig(prev => ({ ...prev, [key]: value }));
+    // contribution must always be stored as a Number (the input yields a string).
+    // Empty / invalid input falls back to 0 rather than storing NaN.
+    let nextValue = value;
+    if (key === 'contribution') {
+      const parsed = parseFloat(value);
+      nextValue = Number.isNaN(parsed) ? 0 : parsed;
+    }
+    updateActiveProfile(profile => ({
+      config: { ...profile.config, [key]: nextValue },
+    }));
   };
 
   // Derived State: Calculations
   const results = useMemo(() => {
+    // Derive startDate from duration
+    const now = new Date();
+    let startDate;
+    switch (globalConfig.duration) {
+      case '1M': startDate = format(subMonths(now, 1), 'yyyy-MM-dd'); break;
+      case '3M': startDate = format(subMonths(now, 3), 'yyyy-MM-dd'); break;
+      case '6M': startDate = format(subMonths(now, 6), 'yyyy-MM-dd'); break;
+      case '1Y': startDate = format(subYears(now, 1), 'yyyy-MM-dd'); break;
+      case '3Y': startDate = format(subYears(now, 3), 'yyyy-MM-dd'); break;
+      case '5Y': startDate = format(subYears(now, 5), 'yyyy-MM-dd'); break;
+      case 'Max': startDate = '1900-01-01'; break;
+      default: startDate = format(subYears(now, 1), 'yyyy-MM-dd');
+    }
+
     const unsorted = symbols.map(symbol => {
       // If there's an error for this symbol, or no data yet, skip it for calculations
-      if (stockErrors[symbol] || !marketData[symbol]) return null; 
+      if (stockErrors[symbol] || !marketData[symbol]) return null;
 
       const data = marketData[symbol];
-      
+
       const result = calculateReturns(
-        data, 
-        parseFloat(globalConfig.contribution), 
-        globalConfig.startDate
+        data,
+        parseFloat(globalConfig.contribution),
+        startDate
       );
       
       return { ...result, symbol };
@@ -211,6 +224,14 @@ function App() {
     return { totalInvested, currentValue, totalReturn, chartData };
   }, [results]);
 
+  // stockErrors is shared across profiles; only show errors for the active profile's symbols.
+  const activeStockErrors = useMemo(
+    () => Object.fromEntries(
+      Object.entries(stockErrors).filter(([s]) => symbols.includes(s))
+    ),
+    [stockErrors, symbols]
+  );
+
   return (
     <div className="relative flex min-h-screen bg-gray-50 font-sans text-gray-900">
       {/* Mobile Sidebar Overlay */}
@@ -221,10 +242,10 @@ function App() {
         ></div>
       )}
       
-      <Sidebar 
+      <Sidebar
         stocks={results}
         allSymbols={symbols} // Pass all symbols including those with errors for sidebar list
-        stockErrors={stockErrors} // Pass stock errors to sidebar
+        stockErrors={activeStockErrors} // Pass stock errors (active profile only) to sidebar
         onAddStock={handleAddStock}
         onRemoveStock={handleRemoveStock} // Allow removal from sidebar list
         globalConfig={globalConfig}
@@ -233,9 +254,15 @@ function App() {
         onSortChange={setSortBy}
         isSidebarOpen={isSidebarOpen} // Pass sidebar state
         toggleSidebar={toggleSidebar} // Pass toggle function
+        profiles={profiles}
+        activeProfile={activeProfile}
+        onSelectProfile={setActiveProfile}
+        onCreateProfile={createProfile}
+        onRenameProfile={renameProfile}
+        onDeleteProfile={deleteProfile}
       />
 
-      <main className="flex-1 min-h-screen p-4 pb-10 lg:p-8 overflow-x-hidden overflow-y-auto lg:ml-72 xl:ml-80">
+      <main className="flex-1 min-h-screen p-4 pb-10 lg:p-8 overflow-x-hidden overflow-y-auto">
         {/* Mobile Header */}
         <div className="lg:hidden sticky top-0 z-20 -mx-4 px-4 pt-2 pb-3 bg-gray-50/95 backdrop-blur supports-[backdrop-filter]:bg-gray-50/80 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -267,6 +294,14 @@ function App() {
           </div>
         </div>
 
+        {/* Desktop Page Header */}
+        <div className="hidden lg:flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Portfolio simulation overview</p>
+          </div>
+        </div>
+
         {/* General Error Display */}
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 flex items-center border border-red-100">
@@ -280,7 +315,7 @@ function App() {
           <StatsCard 
             title="Total Invested" 
             value={aggregates.totalInvested} 
-            subValue={`${symbols.length - Object.keys(stockErrors).length} Active Positions`}
+            subValue={`${symbols.length - Object.keys(activeStockErrors).length} Active Positions`}
           />
           <StatsCard 
             title="Portfolio Value" 
@@ -305,7 +340,11 @@ function App() {
         {/* Main Content */}
         {!loading && results.length > 0 && (
           <>
-            <PortfolioChart data={aggregates.chartData} />
+            <PortfolioChart
+              data={aggregates.chartData}
+              duration={globalConfig.duration}
+              onDurationChange={(d) => handleUpdateConfig('duration', d)}
+            />
             
             <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
               <PieChart className="mr-2" size={20}/> 
@@ -324,7 +363,7 @@ function App() {
           </>
         )}
 
-        {!loading && results.length === 0 && !Object.keys(stockErrors).length && !error && (
+        {!loading && results.length === 0 && !Object.keys(activeStockErrors).length && !error && (
           <div className="flex flex-col items-center justify-center h-[500px] bg-white rounded-xl border border-dashed border-gray-300 text-center p-12">
             <div className="bg-blue-50 p-4 rounded-full mb-4">
                <PieChart size={48} className="text-blue-500" />
@@ -337,11 +376,11 @@ function App() {
         )}
 
         {/* Display stock errors in main content if no results are shown and there are errors */}
-        {!loading && results.length === 0 && Object.keys(stockErrors).length > 0 && (
+        {!loading && results.length === 0 && Object.keys(activeStockErrors).length > 0 && (
           <div className="bg-orange-50 border border-orange-100 text-orange-700 p-4 rounded-lg">
             <h3 className="font-bold mb-2">Some stocks could not be loaded:</h3>
             <ul className="list-disc list-inside">
-              {Object.entries(stockErrors).map(([symbol, msg]) => (
+              {Object.entries(activeStockErrors).map(([symbol, msg]) => (
                 <li key={symbol}>{symbol}: {msg}</li>
               ))}
             </ul>
